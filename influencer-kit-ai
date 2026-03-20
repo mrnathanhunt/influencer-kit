@@ -1,0 +1,119 @@
+export default {
+  async fetch(request, env) {
+    if (request.method === "GET") {
+      return new Response(`
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BRANDVAULT KIT</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { background: linear-gradient(135deg, #0A1428 0%, #000000 100%); color: #E5E5E5; font-family: system-ui; }
+    .glass { background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(20px); border: 1px solid rgba(234, 179, 8, 0.3); }
+    .gold-glow { text-shadow: 0 0 25px #EAB308; color: #EAB308; }
+  </style>
+</head>
+<body class="min-h-screen p-6">
+  <div class="max-w-2xl mx-auto">
+    <h1 class="text-5xl font-bold gold-glow text-center mb-2">BRANDVAULT KIT</h1>
+    <p class="text-cyan-400 text-xl text-center">30-Day Influencer Content System</p>
+
+    <div class="glass rounded-3xl p-10 mt-8">
+      <form id="form" class="space-y-6">
+        <div><label class="block text-cyan-400 text-sm mb-2">1. Niche</label><input id="niche" value="Healthy smoothies" class="w-full p-5 rounded-2xl text-lg"></div>
+        <div><label class="block text-cyan-400 text-sm mb-2">2. Vibe / Style</label><input id="vibe" value="Fresh cold, vibrant" class="w-full p-5 rounded-2xl text-lg"></div>
+        <div><label class="block text-cyan-400 text-sm mb-2">3. Target Audience</label><input id="audience" value="All ages" class="w-full p-5 rounded-2xl text-lg"></div>
+        <div><label class="block text-cyan-400 text-sm mb-2">4. Main Platform</label><select id="platform" class="w-full p-5 rounded-2xl text-lg"><option>Instagram & TikTok</option></select></div>
+        <div><label class="block text-cyan-400 text-sm mb-2">5. What do you want to be known for?</label><input id="knownFor" value="Amazing" class="w-full p-5 rounded-2xl text-lg"></div>
+        <div><label class="block text-cyan-400 text-sm mb-2">6. Promo / Link (or none)</label><input id="promo" placeholder="e.g. link in bio or none" class="w-full p-5 rounded-2xl text-lg"></div>
+        <div><label class="block text-cyan-400 text-sm mb-2">7. Monthly Goal</label><input id="goal" value="100p" class="w-full p-5 rounded-2xl text-lg"></div>
+
+        <button type="button" onclick="generate()" class="w-full bg-yellow-500 text-black font-bold text-2xl py-8 rounded-3xl">UNLOCK FULL 30-DAY PACK</button>
+      </form>
+    </div>
+
+    <div id="output" class="hidden glass rounded-3xl p-10 mt-8">
+      <div id="content"></div>
+      <div class="flex gap-4 mt-12">
+        <button onclick="window.print()" class="flex-1 bg-yellow-500 text-black font-bold py-8 rounded-3xl">📄 EXPORT AS PDF</button>
+        <button onclick="copyPack()" class="flex-1 border-2 border-cyan-400 text-cyan-400 font-bold py-8 rounded-3xl">📋 COPY ALL</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    async function generate() {
+      const formData = {
+        niche: document.getElementById('niche').value,
+        vibe: document.getElementById('vibe').value,
+        audience: document.getElementById('audience').value,
+        platform: document.getElementById('platform').value,
+        knownFor: document.getElementById('knownFor').value,
+        promo: document.getElementById('promo').value || 'none',
+        goal: document.getElementById('goal').value
+      };
+
+      const response = await fetch(location.href, { method: 'POST', body: JSON.stringify(formData), headers: {'Content-Type': 'application/json'} });
+      const result = await response.text();
+      document.getElementById('content').innerHTML = result;
+      document.getElementById('output').classList.remove('hidden');
+    }
+
+    function copyPack() {
+      navigator.clipboard.writeText(document.getElementById('content').innerText);
+      alert('✅ Pack copied!');
+    }
+  </script>
+</body>
+</html>
+      `, { headers: { "Content-Type": "text/html" } });
+    }
+
+    if (request.method === "POST") {
+      const body = await request.json();
+      const prompt = `You are an elite 2026 influencer content strategist. Create a full 30-day personalized content pack for Instagram & TikTok.
+
+Niche: ${body.niche}
+Vibe/Style: ${body.vibe}
+Target Audience: ${body.audience}
+Main Platform: ${body.platform}
+What they want to be known for: ${body.knownFor}
+Promo/Offer: ${body.promo}
+Monthly Goal: ${body.goal}
+
+Output exactly in this structure with rich, varied, ready-to-post content:
+1. Brand Angle Summary
+2. Monthly Content Themes
+3. 30-Day Content Calendar (Day # | Idea | Format | Hook | Caption prompt | CTA)
+4. Viral Hooks (12)
+5. Ready-to-Use Captions (10)
+6. Reel Scripts (5)
+7. Story Sequences
+8. CTA Bank
+9. Bio Options (3)
+
+Make it fresh, vibrant and high-quality.`;
+
+      const ai = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${env.GROQ_API_KEY}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          model: "llama-3.1-70b-versatile",
+          messages: [{ role: "user", content: prompt }],
+          temperature: 0.85,
+          max_tokens: 4000
+        })
+      });
+
+      const data = await ai.json();
+      const result = data.choices[0].message.content.replace(/\n/g, '<br>');
+
+      return new Response(`<div class="prose prose-invert max-w-none">${result}</div>`, { headers: { "Content-Type": "text/html" } });
+    }
+  }
+};
